@@ -1,0 +1,23 @@
+{
+  "name": "marcus",
+  "version": "1.0.0",
+  "description": "marcus the twitter analytics bot",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bootcamp-botters/marcus.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bootcamp-botters/marcus/issues"
+  },
+  "homepage": "https://github.com/bootcamp-botters/marcus#readme",
+  "dependencies": {
+    "botkit": "^0.2.0",
+    "twit": "^2.2.4"
+  }
+}
