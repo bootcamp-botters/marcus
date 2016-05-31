@@ -17,7 +17,14 @@
   },
   "homepage": "https://github.com/bootcamp-botters/marcus#readme",
   "dependencies": {
+    "aylien_textapi": "^0.6.0",
     "botkit": "^0.2.0",
+    "google-url": "0.0.4",
+    "node-twitter-api": "^1.7.2",
+    "quiche": "osamayousry/quiche",
+    "sentiment": "^1.0.6",
+    "shrink": "0.0.3",
+    "tinyurl": "^1.1.0",
     "twit": "^2.2.4"
   }
 }
