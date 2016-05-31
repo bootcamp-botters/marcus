@@ -25,8 +25,57 @@ var controller = Botkit.slackbot({
 
 var bot = controller.spawn(config2).startRTM();
 var sentimentObj = {};
+var sentimentIntervalObj = {
+    positive: 0,
+    negative: 0,
+    neutral: 0
+};
 var topUsersObj = {};
 var sentimentIntervalArr = [];
+
+
+function makeBar(bot, message) {
+    var Quiche = require('quiche');
+    //var lastInterval = sentimentIntervalArr.length;
+    //var bottom = lastInterval < 10 ? 0 : lastInterval;
+    var negArr = sentimentIntervalArr.map(function(obj) {
+        return obj.negative;
+    });
+    var posArr = sentimentIntervalArr.map(function(obj) {
+        return obj.positive;
+    });
+    var neuArr = sentimentIntervalArr.map(function(obj) {
+        return obj.neutral;
+    });
+
+    // console.log('neg: '+negArr);
+    // console.log('pos: '+posArr);
+    // console.log('neu: '+neuArr);
+
+    var bar = new Quiche('bar');
+    bar.setWidth(400);
+    bar.setHeight(265);
+    bar.setTitle('Sentiment distribution by Interval');
+    bar.setBarStacked(); // Stacked chart
+    bar.setBarWidth(0);
+    bar.setBarSpacing(6); // 6 pixles between bars/groups
+    bar.setLegendBottom('Intervals'); // Put legend at bottom
+    bar.setTransparentBackground(); // Make background transparent
+
+    bar.addData(neuArr, 'Neutral', 'FF0000');
+    bar.addData(negArr, 'Negative', '0000FF');
+    bar.addData(posArr, 'Positive', '008000');
+
+
+    bar.setAutoScaling(); // Auto scale y axis
+    bar.addAxisLabels('x', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
+
+    var imageUrl = bar.getUrl(true); // First param controls http vs. https
+    TinyURL.shorten(imageUrl, function(res) {
+        bot.reply(message, res);
+        console.log(res); //Returns a shorter version of http://google.com - http://tinyurl.com/2tx 
+    });
+}
 
 function makePie(bot, message) {
     var pie = new Quiche('pie');
@@ -132,8 +181,11 @@ controller.hears('twitter', 'direct_message', function(bot, message) {
             }
             else {
                 sentimentObj[sent] = sentimentObj[sent] + 1;
-            }
 
+
+            }
+            sentimentIntervalObj[sent]++;
+            console.log(sentimentIntervalObj);
             //top users
             if (!topUsersObj[tweet.user.screen_name]) {
                 topUsersObj[tweet.user.screen_name] = 1;
@@ -147,9 +199,19 @@ controller.hears('twitter', 'direct_message', function(bot, message) {
     });
 
     timer = setInterval(function() {
-        console.log('timer');
+        //console.log('timer');
         makePie(bot, message);
         getTop5Posters(bot, message);
+        
+        sentimentIntervalArr.push(sentimentIntervalObj);
+        makeBar(bot, message);
+        // console.log(sentimentIntervalArr);
+        // console.log('negative first entry: '+sentimentIntervalArr[0].negative);
+        sentimentIntervalObj = {
+            positive: 0,
+            negative: 0,
+            neutral: 0
+        };
     }, 60000);
 
 });
@@ -168,14 +230,14 @@ controller.hears('stop', 'direct_message', function(bot, message) {
 });
 
 controller.hears('negative alerts on', 'direct_message', function(bot, message) {
-    if(negativeAlerts) {
+    if (negativeAlerts) {
         bot.reply(message, 'Alerts for negative twitter posts already on.');
     }
     else {
         negativeAlerts = true;
         bot.reply(message, 'Negative twitter post alert has been turned OFF at your request.')
     }
-    
+
 });
 
 controller.hears('negative alerts off', 'direct_message', function(bot, message) {
@@ -186,7 +248,12 @@ controller.hears('negative alerts off', 'direct_message', function(bot, message)
         negativeAlerts = false;
         bot.reply(message, 'Negative twitter post alert has been turned ON at your request.')
     }
-    
+
+});
+
+controller.hears('bar', 'direct_message', function(bot, message) {
+
+    makeBar(bot, message);
 });
 
 controller.hears('pie', 'direct_message', function(bot, message) {
