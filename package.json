@@ -19,6 +19,7 @@
   "dependencies": {
     "aylien_textapi": "^0.6.0",
     "botkit": "^0.2.0",
+    "find-hashtags": "^1.0.0",
     "google-url": "0.0.4",
     "node-twitter-api": "^1.7.2",
     "quiche": "osamayousry/quiche",
