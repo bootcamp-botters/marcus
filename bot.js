@@ -27,6 +27,7 @@ var controller = Botkit.slackbot({
 var bot = controller.spawn(config2).startRTM();
 var sentimentObj = {};
 var sentimentIntervalObj = {
+    interval: 0,
     positive: 0,
     negative: 0,
     neutral: 0
@@ -34,6 +35,25 @@ var sentimentIntervalObj = {
 var topHashtags = {};
 var topUsersObj = {};
 var sentimentIntervalArr = [];
+var xAxisLabelArr = [];
+var chartColors = {
+    pos: '04B8F2',
+    neg: 'B8274E',
+    neu: '59EBBF'
+};
+
+function resetVars() {
+    sentimentObj = {};
+    sentimentIntervalObj = {
+        interval: 0,
+        positive: 0,
+        negative: 0,
+        neutral: 0
+    };
+    topHashtags = {};
+    topUsersObj = {};
+    sentimentIntervalArr = [];
+}
 
 //constructs Sentiment Distribution by Time Interval bar chart
 function makeBar(bot, message) {
@@ -50,6 +70,8 @@ function makeBar(bot, message) {
         return obj.neutral;
     });
 
+
+
     var bar = new Quiche('bar');
     bar.setWidth(400);
     bar.setHeight(265);
@@ -60,58 +82,81 @@ function makeBar(bot, message) {
     bar.setLegendBottom('Intervals'); // Put legend at bottom
     bar.setTransparentBackground(); // Make background transparent
 
-    bar.addData(neuArr, 'Neutral', '00FF00');
-    bar.addData(negArr, 'Negative', 'FF0000');
-    bar.addData(posArr, 'Positive', '0000FF');
+    bar.addData(neuArr, 'Neutral', chartColors.neu);
+    bar.addData(negArr, 'Negative', chartColors.neg);
+    bar.addData(posArr, 'Positive', chartColors.pos);
 
 
     bar.setAutoScaling(); // Auto scale y axis
-    bar.addAxisLabels('x', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
+    bar.addAxisLabels('x', xAxisLabelArr);
 
     var imageUrl = bar.getUrl(true); // First param controls http vs. https
-    TinyURL.shorten(imageUrl, function(res) {
-        bot.reply(message, res);
-    });
-}
+    // TinyURL.shorten(imageUrl, function(res) {
+    //bot.reply(message, res);
 
+    // });
+    bot.reply(message, {
+        attachments: [{
+            fallback: 'Sentiment Distribution by Time Interval',
+            image_url: imageUrl,
+            color: "#4099FF"
+        }]
+    })
+}
+//4099FF
 function makePie(bot, message) {
     var pie = new Quiche('pie');
 
     pie.set3D();
-    pie.setTitle('Sentiment distribution');
+    pie.setTitle('Sentiment Distribution');
     pie.setTransparentBackground(); // Make background transparent
-    pie.addData(sentimentObj.positive || 0, 'Positive '.concat(sentimentObj.positive || 0), '0000FF');
-    pie.addData(sentimentObj.negative || 0, 'Negative '.concat(sentimentObj.negative || 0), 'FF0000');
-    pie.addData(sentimentObj.neutral || 0, 'Neutral '.concat(sentimentObj.neutral || 0), '00FF00');
+    pie.addData(sentimentObj.positive || 0, 'Positive '.concat(sentimentObj.positive || 0), chartColors.pos);
+    pie.addData(sentimentObj.negative || 0, 'Negative '.concat(sentimentObj.negative || 0), chartColors.neg);
+    pie.addData(sentimentObj.neutral || 0, 'Neutral '.concat(sentimentObj.neutral || 0), chartColors.neu);
 
 
     var imageUrl = pie.getUrl(true); // First param controls http vs. https 
-    TinyURL.shorten(imageUrl, function(res) {
-        bot.reply(message, res);
-    });
+    // TinyURL.shorten(imageUrl, function(res) {
+    //     bot.reply(message, res);
+    // });
+    bot.reply(message, {
+        attachments: [{
+            fallback: 'Sentiment Distribution',
+            image_url: imageUrl,
+            color: "#4099FF"
+        }]
+    })
 
 }
 
-function getTop5Hashtags (bot, message) {
+//bot outputs top 5 hashtags
+function getTop5Hashtags(bot, message) {
     var arr = Object.keys(topHashtags).map(function(hashtag) {
         return {
-            hashtag : hashtag,
+            hashtag: hashtag,
             count: topHashtags[hashtag]
         };
     }).sort(function(a, b) {
         return b.count - a.count;
     });
-    //bot.reply(message, 'top 5 hashtags');
-    bot.reply(message, {
-        "text": "*Top 5 Hashtags*",
-        "mrkdwn": true
-    });
+
     var len = arr.length >= 5 ? 5 : arr.length;
+    var top5HashText = "*Top 5 Hashtags*\n";
     for (var i = 0; i < len; i++) {
-        bot.reply(message, arr[i].count + ' for #' + arr[i].hashtag);
+        top5HashText = top5HashText + arr[i].count + ' for #' + arr[i].hashtag + '\n';
     }
+
+    bot.reply(message, {
+        attachments: [{
+            fallback: 'Top 5 Hashtags!',
+            text: top5HashText,
+            color: "#4099FF",
+        }]
+    });
+
 }
 
+//bot outputs top 5 posters
 function getTop5Posters(bot, message) {
     var arr = Object.keys(topUsersObj).map(function(username) {
         return {
@@ -123,18 +168,24 @@ function getTop5Posters(bot, message) {
     });
 
     //bot.reply(message, 'top 5 posters');
-    bot.reply(message, {
-        "text": "*Top 5 Posters*",
-        "mrkdwn": true
-    });
+    // bot.reply(message, {
+    //     "text": "*Top 5 Posters*",
+    //     "mrkdwn": true
+    // });
+    var top5posterText = "*Top 5 Posters*\n";
     var len = arr.length >= 5 ? 5 : arr.length;
     for (var i = 0; i < len; i++) {
-        bot.reply(message, arr[i].tweets + ' from @' + arr[i].user);
+        top5posterText = top5posterText + arr[i].tweets + ' from @' + arr[i].user + ' https://www.twitter.com/' + arr[i].user.toLowerCase() + '\n';
     }
+
+    bot.reply(message, {
+        attachments: [{
+            fallback: 'Top 5 Posters!',
+            text: top5posterText,
+            color: "#4099FF",
+        }]
+    });
 }
-
-
-
 
 function sentimentTweet(tweet, callback) {
     textapi.sentiment({
@@ -160,8 +211,22 @@ function startStream(bot, message) {
 
             if (score < 0) {
                 sent = 'negative';
+
                 if (negativeAlerts) {
-                    bot.reply(message, tweet.created_at + ', posted by ' + tweet.user.screen_name + ': ' + tweet.text);
+                    bot.reply(message, {
+                        attachments: [{
+                            fallback: 'Negative Post Alert!',
+                            text: 'NEGATIVE POST ALERT!\n' + tweet.created_at + ', posted by ' + tweet.user.screen_name + ': ' + tweet.text,
+                            color: "#FF0000"
+                        }]
+                    });
+                    //bot.reply(message, tweet.created_at + ', posted by ' + tweet.user.screen_name + ': ' + tweet.text);
+                    // bot.reply(message, {
+                    //     "text": "*Negative post!*" + tweet.created_at + ', posted by ' + tweet.user.screen_name + ': ' + tweet.text,
+                    //     "mrkdwn": true,
+                    //     color: 'FF0000'
+
+                    // });
                 }
             }
             else if (score > 0) {
@@ -180,6 +245,7 @@ function startStream(bot, message) {
             }
             sentimentIntervalObj[sent]++;
 
+
             //top users
             if (!topUsersObj[tweet.user.screen_name]) {
                 topUsersObj[tweet.user.screen_name] = 1;
@@ -193,13 +259,13 @@ function startStream(bot, message) {
             var hashtags = findHashtags(tweet.text);
             if (hashtags) {
                 hashtags.forEach(function(element) {
-                        if (!topHashtags[element]) {
-                            topHashtags[element] = 1;
-                        }
-                        else {
-                            topHashtags[element] = topHashtags[element] + 1;
-                        }
-                    });
+                    if (!topHashtags[element]) {
+                        topHashtags[element] = 1;
+                    }
+                    else {
+                        topHashtags[element] = topHashtags[element] + 1;
+                    }
+                });
             }
             // console.log(topHashtags);
 
@@ -208,6 +274,16 @@ function startStream(bot, message) {
     });
 
     timer = setInterval(function() {
+        sentimentIntervalObj.interval++;
+        xAxisLabelArr.push(sentimentIntervalObj.interval);
+        //bot.reply(message,'Interval '+ sentimentIntervalObj.interval + ': ' + sentimentIntervalObj.interval +'m');
+        bot.reply(message, {
+            attachments: [{
+                fallback: 'Interval heading!',
+                text: 'Interval Report '+ sentimentIntervalObj.interval + ': ' + sentimentIntervalObj.interval +'m',
+                color: "#FFFF00",
+            }]
+        });
         makePie(bot, message);
         getTop5Posters(bot, message);
         getTop5Hashtags(bot, message);
@@ -217,9 +293,14 @@ function startStream(bot, message) {
             sentimentIntervalArr.reverse();
             sentimentIntervalArr.pop();
             sentimentIntervalArr.reverse();
+
+            xAxisLabelArr.reverse();
+            xAxisLabelArr.pop();
+            xAxisLabelArr.reverse();
         }
 
         sentimentIntervalObj = {
+            interval: sentimentIntervalObj.interval,
             positive: 0,
             negative: 0,
             neutral: 0
@@ -227,67 +308,14 @@ function startStream(bot, message) {
     }, 60000);
 }
 
-function cancellable(callback) {
-
-    var stopPattern = {
-        pattern: '^(cancel|stop)$',
-        callback: function(message, convo) {
-            convo.stop();
-        }
-    };
-
-    if (Array.isArray(callback)) {
-        return callback.concat(stopPattern);
-    }
-
-    return [{
-            default: true,
-            callback: callback
-        },
-        stopPattern
-    ];
-}
-
-// controller.hears('^keyword$', 'direct_message', function(bot, message) {
-//   if (matches[message.user]) {
-//     bot.reply(message, 'YOU ARE ALREADY IN A CONVERSATION');
-//     return;
-//   }
-// 
-//   bot.startConversation(message, function(err, convo) {
-//     if (!err) {
-//       convo.ask('What keyword do you like?', cancellable(function(message, convo) { //wrapped in cancellable function in case user changes mind and types 'cancel' or 'stop'
-//         convo.next();
-//       }), {key: 'keyword'});
-// 
-//       convo.on('end', function(convo) {
-//         if (convo.status == 'completed') {
-//           var userKeyword = convo.extractResponse('keyword');
-//           if (keywords[userKeyword]) {
-//             var matchedMessage = keywords[userKeyword];
-//             keywords[userKeyword] = null;
-// 
-//             matches[message.user] = matchedMessage;
-//             matches[matchedMessage.user] = message;
-//           }
-//           else {
-//             keywords[userKeyword] = message;
-//           }
-//         } else {
-//           // this happens if the conversation ended prematurely for some reason
-//           bot.reply(message, 'OK, nevermind!');
-//         }
-//       });
-//     }
-//   });
-// });
-
 controller.hears(['follow tweets (.*)', 'follow on (.*)'], 'direct_message', function(bot, message) {
     if (!stream) {
         //bot.reply(message, 'LAHOWENJO839U9:  ' + message.match[1] + ', length: ' + message.match[1].length);
         stream = T.stream('statuses/filter', {
             track: [message.match[1]]
         });
+
+        resetVars();
         startStream(bot, message);
         bot.reply(message, 'Okay. I will be tracking *' + message.match[1] + '* on Twitter, and provide you a summary report at one minute intervals.');
     }
@@ -317,7 +345,7 @@ controller.hears('negative alerts on', 'direct_message', function(bot, message) 
     }
     else {
         negativeAlerts = true;
-        bot.reply(message, 'Negative twitter post alert has been turned OFF at your request.')
+        bot.reply(message, 'Negative twitter post alert has been turned ON at your request.');
     }
 
 });
@@ -328,8 +356,20 @@ controller.hears('negative alerts off', 'direct_message', function(bot, message)
     }
     else {
         negativeAlerts = false;
-        bot.reply(message, 'Negative twitter post alert has been turned ON at your request.')
+        bot.reply(message, 'Negative twitter post alert has been turned OFF at your request.');
     }
+
+});
+
+controller.hears('test', 'direct_message', function(bot, message) {
+
+    bot.reply(message, {
+        attachments: [{
+            fallback: 'Negative Post Alert!',
+            text: 'Negative Post Alert!',
+            color: "#FF0000"
+        }]
+    });
 
 });
 
