@@ -1,19 +1,10 @@
 var Botkit = require('botkit');
 var Twit = require('twit');
-var twitterAPI = require('node-twitter-api');
 var sentiment = require('sentiment');
 var Quiche = require('quiche');
 var findHashtags = require('find-hashtags');
-var TinyURL = require('tinyurl');
 var config = require('./config');
 var config2 = require('./config2');
-var config3 = require('./config3');
-var config4 = require('./config4');
-var os = require('os');
-var AYLIENTextAPI = require('aylien_textapi');
-var textapi = new AYLIENTextAPI(config3);
-
-var twitter = new twitterAPI(config4);
 var T = new Twit(config);
 
 var negativeAlerts = false;
@@ -38,9 +29,10 @@ var sentimentIntervalArr = [];
 var xAxisLabelArr = [];
 var chartColors = {
     pos: '04B8F2',
-    neg: 'B8274E',
-    neu: '59EBBF'
+    neg: 'EDED1D',
+    neu: 'C1D1CC'
 };
+
 
 function resetVars() {
     sentimentObj = {};
@@ -91,19 +83,17 @@ function makeBar(bot, message) {
     bar.addAxisLabels('x', xAxisLabelArr);
 
     var imageUrl = bar.getUrl(true); // First param controls http vs. https
-    // TinyURL.shorten(imageUrl, function(res) {
-    //bot.reply(message, res);
 
-    // });
     bot.reply(message, {
         attachments: [{
             fallback: 'Sentiment Distribution by Time Interval',
             image_url: imageUrl,
             color: "#4099FF"
         }]
-    })
+    });
+
 }
-//4099FF
+
 function makePie(bot, message) {
     var pie = new Quiche('pie');
 
@@ -116,16 +106,14 @@ function makePie(bot, message) {
 
 
     var imageUrl = pie.getUrl(true); // First param controls http vs. https 
-    // TinyURL.shorten(imageUrl, function(res) {
-    //     bot.reply(message, res);
-    // });
+
     bot.reply(message, {
         attachments: [{
             fallback: 'Sentiment Distribution',
             image_url: imageUrl,
             color: "#4099FF"
         }]
-    })
+    });
 
 }
 
@@ -141,7 +129,7 @@ function getTop5Hashtags(bot, message) {
     });
 
     var len = arr.length >= 5 ? 5 : arr.length;
-    var top5HashText = "*Top 5 Hashtags*\n";
+    var top5HashText = '';
     for (var i = 0; i < len; i++) {
         top5HashText = top5HashText + arr[i].count + ' for #' + arr[i].hashtag + '\n';
     }
@@ -149,6 +137,7 @@ function getTop5Hashtags(bot, message) {
     bot.reply(message, {
         attachments: [{
             fallback: 'Top 5 Hashtags!',
+            title: 'Top 5 Hashtags',
             text: top5HashText,
             color: "#4099FF",
         }]
@@ -167,12 +156,8 @@ function getTop5Posters(bot, message) {
         return b.tweets - a.tweets;
     });
 
-    //bot.reply(message, 'top 5 posters');
-    // bot.reply(message, {
-    //     "text": "*Top 5 Posters*",
-    //     "mrkdwn": true
-    // });
-    var top5posterText = "*Top 5 Posters*\n";
+
+    var top5posterText = "";
     var len = arr.length >= 5 ? 5 : arr.length;
     for (var i = 0; i < len; i++) {
         top5posterText = top5posterText + arr[i].tweets + ' from @' + arr[i].user + ' https://www.twitter.com/' + arr[i].user.toLowerCase() + '\n';
@@ -182,30 +167,16 @@ function getTop5Posters(bot, message) {
         attachments: [{
             fallback: 'Top 5 Posters!',
             text: top5posterText,
+            title: 'Top 5 Posters',
             color: "#4099FF",
         }]
     });
 }
 
-function sentimentTweet(tweet, callback) {
-    textapi.sentiment({
-        text: tweet,
-        mode: 'tweet'
-    }, function(error, response) {
-        if (error === null) {
-            callback(response);
-        }
-    });
-}
-
 function startStream(bot, message) {
     stream.on('tweet', function(tweet) {
-        //console.log(tweet.text);
+
         if (!tweet.retweeted && !tweet.text.startsWith('RT')) {
-            //code for sentiment anaysis
-            // console.log('==========================================================');
-            // console.log(tweet.text);
-            // console.log('==========================================================');
             var sent;
             var score = sentiment(tweet.text).score;
 
@@ -216,17 +187,12 @@ function startStream(bot, message) {
                     bot.reply(message, {
                         attachments: [{
                             fallback: 'Negative Post Alert!',
-                            text: 'NEGATIVE POST ALERT!\n' + tweet.created_at + ', posted by ' + tweet.user.screen_name + ': ' + tweet.text,
+                            text: tweet.created_at + ', posted by ' + tweet.user.screen_name + ': ' + tweet.text,
+                            title: 'NEGATIVE POST ALERT!',
                             color: "#FF0000"
                         }]
                     });
-                    //bot.reply(message, tweet.created_at + ', posted by ' + tweet.user.screen_name + ': ' + tweet.text);
-                    // bot.reply(message, {
-                    //     "text": "*Negative post!*" + tweet.created_at + ', posted by ' + tweet.user.screen_name + ': ' + tweet.text,
-                    //     "mrkdwn": true,
-                    //     color: 'FF0000'
 
-                    // });
                 }
             }
             else if (score > 0) {
@@ -255,7 +221,6 @@ function startStream(bot, message) {
             }
 
             //top hastags
-            //console.log(findHashtags('hastags: '+tweet.text));
             var hashtags = findHashtags(tweet.text);
             if (hashtags) {
                 hashtags.forEach(function(element) {
@@ -267,7 +232,6 @@ function startStream(bot, message) {
                     }
                 });
             }
-            // console.log(topHashtags);
 
         }
 
@@ -276,19 +240,22 @@ function startStream(bot, message) {
     timer = setInterval(function() {
         sentimentIntervalObj.interval++;
         xAxisLabelArr.push(sentimentIntervalObj.interval);
-        //bot.reply(message,'Interval '+ sentimentIntervalObj.interval + ': ' + sentimentIntervalObj.interval +'m');
         bot.reply(message, {
             attachments: [{
                 fallback: 'Interval heading!',
-                text: 'Interval Report '+ sentimentIntervalObj.interval + ': ' + sentimentIntervalObj.interval +'m',
+                text: 'Interval Report ' + sentimentIntervalObj.interval + ': ' + sentimentIntervalObj.interval + 'm',
                 color: "#FFFF00",
             }]
         });
+        
         makePie(bot, message);
         getTop5Posters(bot, message);
         getTop5Hashtags(bot, message);
         sentimentIntervalArr.push(sentimentIntervalObj);
-        makeBar(bot, message);
+        if (sentimentIntervalObj.interval > 1) {
+            makeBar(bot, message);
+        }
+        
         if (sentimentIntervalArr.length === 10) {
             sentimentIntervalArr.reverse();
             sentimentIntervalArr.pop();
@@ -320,7 +287,7 @@ controller.hears(['follow tweets (.*)', 'follow on (.*)'], 'direct_message', fun
         bot.reply(message, 'Okay. I will be tracking *' + message.match[1] + '* on Twitter, and provide you a summary report at one minute intervals.');
     }
     else {
-        bot.reply(message, 'Already tracking twitter!')
+        bot.reply(message, 'Already tracking twitter!');
     }
 
 
